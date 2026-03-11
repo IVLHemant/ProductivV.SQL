@@ -2,9 +2,7 @@ INSERT INTO [dbo].[BU_Summary]
 (
     SummaryDate,
     InstanceID,
-    BusinessUnitID,
     BusinessUnitGroup,
-    BusinessUnitDescription,
     TotalEmployees,
     BenchEmployees,
     TotalBillableEmployees,
@@ -18,10 +16,8 @@ SELECT
 
     e.InstanceID,
 
-    ISNULL(e.BusinessUnitID, 0) AS BusinessUnitID,
-
-    ISNULL(b.BusinessUnitGroup, 'Unassigned') AS BusinessUnitGroup,
-    ISNULL(b.BusinessUnitDescription, 'Unassigned Business Unit') AS BusinessUnitDescription,
+     ISNULL(b.BusinessUnitGroup, 'Unassigned') AS BusinessUnitGroup,
+    
 
     -- Total Active Employees
     COUNT(DISTINCT CASE 
