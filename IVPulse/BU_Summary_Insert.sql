@@ -1,4 +1,4 @@
-INSERT INTO [dbo].[BU_Summary]
+INSERT INTO dbo.BU_Summary
 (
     SummaryDate,
     InstanceID,
@@ -11,13 +11,13 @@ INSERT INTO [dbo].[BU_Summary]
     TotalEmployeesWithEnablingUnit,
     BGVCandidates
 )
+
 SELECT
     CAST(GETDATE() AS DATE) AS SummaryDate,
 
     e.InstanceID,
 
-     ISNULL(b.BusinessUnitGroup, 'Unassigned') AS BusinessUnitGroup,
-    
+    b.BusinessUnitGroup,
 
     -- Total Active Employees
     COUNT(DISTINCT CASE 
@@ -61,18 +61,12 @@ SELECT
         THEN e.ID 
     END) AS TotalEmployeesWithEnablingUnit,
 
-    -- BGV count only under Unassigned BU
-    MAX(
-        CASE 
-            WHEN e.BusinessUnitID IS NULL 
-            THEN bgv.TotalBGV
-            ELSE 0
-        END
-    ) AS BGVCandidates
+    -- BGV Candidates grouped by BU
+    ISNULL(bgv.BGVCandidates,0) AS BGVCandidates
 
 FROM PeP_DB_06Feb2026.dbo.Employee e
 
-LEFT JOIN PeP_DB_06Feb2026.dbo.BusinessUnitMaster b
+INNER JOIN PeP_DB_06Feb2026.dbo.BusinessUnitMaster b
     ON e.BusinessUnitID = b.ID
    AND e.InstanceID = b.InstanceID
 
@@ -80,19 +74,29 @@ LEFT JOIN PeP_DB_06Feb2026.dbo.LeaveHistory lh
     ON lh.EmployeeID = e.ID
    AND lh.InstanceID = e.InstanceID
 
--- Pre-aggregated BGV (single execution)
 LEFT JOIN
 (
-    SELECT COUNT(*) AS TotalBGV
-    FROM PeP_DB_06Feb2026.dbo.CandidateBGVHistory
-) bgv ON 1 = 1
+    SELECT
+        e.InstanceID,
+        e.BusinessUnitID,
+        COUNT(*) AS BGVCandidates
+    FROM PeP_DB_06Feb2026.dbo.CandidateBGVHistory b
+    INNER JOIN PeP_DB_06Feb2026.dbo.HireCandidate h
+        ON b.HireCandidateID = h.ID
+    INNER JOIN PeP_DB_06Feb2026.dbo.Employee e
+        ON h.EmployeeCode = e.EmployeeCode
+    GROUP BY
+        e.InstanceID,
+        e.BusinessUnitID
+) bgv
+ON bgv.InstanceID = e.InstanceID
+AND bgv.BusinessUnitID = e.BusinessUnitID
 
 GROUP BY
     e.InstanceID,
-    ISNULL(e.BusinessUnitID, 0),
-    ISNULL(b.BusinessUnitGroup, 'Unassigned'),
-    ISNULL(b.BusinessUnitDescription, 'Unassigned Business Unit')
+    b.BusinessUnitGroup,
+    bgv.BGVCandidates
 
 ORDER BY
     e.InstanceID,
-    ISNULL(e.BusinessUnitID, 0);
+    b.BusinessUnitGroup;
